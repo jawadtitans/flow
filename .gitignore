@@ -26,9 +26,11 @@ tls/
 backups/
 !.env.production.example
 
-# Keep this branch focused on the Flutter frontend and repository metadata.
+# Allow component directories when their branches are merged into main.
 /*
 !/.gitignore
 !/LICENSE
 !/README.md
 !/frontend/
+!/backend/
+!/dashboard/
