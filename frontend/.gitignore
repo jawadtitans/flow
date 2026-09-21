@@ -1,0 +1,24 @@
+# Flutter and Dart generated files.
+.dart_tool/
+.flutter-plugins*
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+
+# Local editor and operating system files.
+.idea/
+.vscode/
+*.iml
+*.log
+.DS_Store
+
+# Local environment and signing credentials.
+.env
+.env.*
+key.properties
+*.jks
+*.keystore
+*.p12
+*.pem
