@@ -1,0 +1,32 @@
+@import '@fontsource-variable/inter';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 150 14% 97%; --foreground: 160 17% 13%;
+    --card: 0 0% 100%; --card-foreground: 160 17% 13%;
+    --primary: 166 72% 28%; --primary-foreground: 0 0% 100%;
+    --secondary: 154 25% 93%; --secondary-foreground: 166 60% 24%;
+    --muted: 150 10% 96%; --muted-foreground: 153 5% 43%;
+    --accent: 155 30% 92%; --accent-foreground: 166 72% 24%;
+    --destructive: 0 68% 48%; --destructive-foreground: 0 0% 100%;
+    --border: 150 10% 89%; --input: 150 10% 86%; --ring: 166 72% 28%; --radius: .75rem;
+  }
+  * { @apply border-border; }
+  body { @apply bg-background font-sans text-foreground antialiased; margin: 0; font-feature-settings: 'cv11', 'ss01'; }
+  button, input, select { font: inherit; }
+  :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2; }
+  ::selection { background: #d3ede1; }
+}
+@layer components {
+  .page-heading { @apply text-[28px] font-semibold tracking-[-.035em] sm:text-[32px]; }
+  .eyebrow { @apply text-[11px] font-semibold uppercase tracking-[.12em] text-muted-foreground; }
+  .table-head { @apply px-5 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground; }
+  .table-cell { @apply px-5 py-4 text-sm; }
+}
+.page-enter { animation: arrive .25s ease-out both; }
+@keyframes arrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.recharts-surface:focus { outline: none; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }

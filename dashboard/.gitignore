@@ -1,0 +1,19 @@
+# Dependencies, builds, and test reports.
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+playwright-report/
+test-results/
+.vite/
+
+# Local configuration.
+.env
+.env.*
+!.env.example
+*.local
+*.log
+*.pem
+*.key
+*.p12
+.DS_Store
