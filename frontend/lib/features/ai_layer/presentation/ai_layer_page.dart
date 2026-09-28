@@ -56,21 +56,11 @@ class _AiLayerPageState extends State<AiLayerPage> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    // The AI layer is a focused extension of Today, so its own composer owns
-    // the bottom area instead of competing with the main navigation dock.
-    flowBottomNavigationExpanded.value = false;
-    flowNavigationVisible.value = false;
-  }
-
-  @override
   void dispose() {
     _requestController.dispose();
     _requestFocus.dispose();
     _draftTitleController.dispose();
     _routineStepController.dispose();
-    flowNavigationVisible.value = true;
     super.dispose();
   }
 
@@ -128,7 +118,15 @@ class _AiLayerPageState extends State<AiLayerPage> {
             top: topInset + 7,
             left: FlowSpace.page,
             right: FlowSpace.page,
-            child: _AiHeader(onClose: () => context.go('/today')),
+            child: _AiHeader(
+              onClose: () {
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/today');
+                }
+              },
+            ),
           ),
           Positioned(
             left: FlowSpace.page,

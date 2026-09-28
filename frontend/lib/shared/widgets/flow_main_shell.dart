@@ -20,19 +20,14 @@ class FlowMainShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-    // This remains visible beneath both fading pages, preventing a black frame
-    // while the nested route is replaced.
+    // Keep the app canvas behind the nested navigator during route changes.
     color: Theme.of(context).scaffoldBackgroundColor,
     child: Stack(
       fit: StackFit.expand,
       children: [
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          reverseDuration: const Duration(milliseconds: 160),
-          transitionBuilder: (page, animation) =>
-              FadeTransition(opacity: animation, child: page),
-          child: KeyedSubtree(key: ValueKey(location), child: child),
-        ),
+        // The router owns this navigator. Keep its identity stable across
+        // destination changes and when another route is pushed above it.
+        child,
         ValueListenableBuilder<bool>(
           valueListenable: flowBottomNavigationExpanded,
           builder: (context, expanded, child) => IgnorePointer(
@@ -45,29 +40,29 @@ class FlowMainShell extends StatelessWidget {
           ),
           child: const SizedBox.expand(),
         ),
-        ValueListenableBuilder<bool>(
-          valueListenable: flowNavigationVisible,
-          builder: (context, visible, child) => IgnorePointer(
-            ignoring: !visible,
-            child: AnimatedSlide(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
-              offset: visible ? Offset.zero : const Offset(0, 1.15),
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 140),
-                opacity: visible ? 1 : 0,
-                child: child,
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: ValueListenableBuilder<bool>(
+            valueListenable: flowNavigationVisible,
+            builder: (context, visible, child) => IgnorePointer(
+              ignoring: !visible,
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                offset: visible ? Offset.zero : const Offset(0, 1.15),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 140),
+                  opacity: visible ? 1 : 0,
+                  child: child,
+                ),
               ),
             ),
-          ),
-          child: Align(
-            alignment: Alignment.bottomCenter,
             child: FlowBottomNavigation(
               activeDestination: _activeDestination,
               onSelect: (index) => _navigate(context, index),
               onMoreDestination: (destination) =>
                   _navigateDestination(context, destination),
-              onOpenAgent: () => context.go('/ai-layer'),
+              onOpenAgent: () => context.push('/ai-layer'),
             ),
           ),
         ),
@@ -78,7 +73,6 @@ class FlowMainShell extends StatelessWidget {
   void _navigate(BuildContext context, int index) => context.go(switch (index) {
     0 => '/inbox',
     1 => '/today',
-    2 => '/favorites',
     _ => '/today',
   });
 
@@ -88,8 +82,10 @@ class FlowMainShell extends StatelessWidget {
         'My tasks' => context.go('/today'),
         'Favorites' => context.go('/favorites'),
         'Search' => context.go('/search'),
-        _ => ScaffoldMessenger.of(
+        'Settings' => context.push('/settings'),
+        _ => showFlowNotification(
           context,
-        ).showSnackBar(SnackBar(content: Text('$destination is coming soon'))),
+          message: '$destination is coming soon',
+        ),
       };
 }

@@ -9,6 +9,7 @@ ThemeData _theme(Brightness brightness) {
   final onSurface = dark ? const Color(0xFFF5F7FA) : FlowColors.ink;
   return ThemeData(
     useMaterial3: true,
+    fontFamily: 'Roboto',
     brightness: brightness,
     colorScheme: ColorScheme.fromSeed(
       seedColor: FlowColors.blue,

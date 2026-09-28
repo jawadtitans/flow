@@ -262,6 +262,7 @@ class _WorkspaceMenuOverlayState extends State<_WorkspaceMenuOverlay>
       (LucideIcons.focus, 'My tasks', '/today'),
       (LucideIcons.star, 'Favorites', '/favorites'),
       (LucideIcons.search, 'Search', '/search'),
+      (LucideIcons.settings, 'Settings', '/settings'),
     ];
     final animation = CurvedAnimation(
       parent: _controller,

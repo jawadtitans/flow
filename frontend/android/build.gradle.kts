@@ -17,6 +17,15 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    pluginManager.withPlugin("com.android.library") {
+        extensions.configure<com.android.build.api.variant.LibraryAndroidComponentsExtension> {
+            finalizeDsl {
+                // Build native plugins with the same NDK as the application.
+                it.ndkVersion = project(":app")
+                    .extensions.getByType<com.android.build.gradle.AppExtension>().ndkVersion
+            }
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

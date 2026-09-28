@@ -112,6 +112,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         ),
                         FlowHeaderActionIcon(
                           icon: LucideIcons.ellipsis,
+                          semanticLabel: 'Open workspace menu',
                           onPressed: _openWorkspace,
                           size: 42,
                           iconSize: 20,
@@ -151,9 +152,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       'My tasks' => context.go('/today'),
       'Favorites' => context.go('/favorites'),
       'Search' => context.go('/search'),
-      _ => ScaffoldMessenger.of(
+      'Settings' => context.push('/settings'),
+      _ => showFlowNotification(
         context,
-      ).showSnackBar(SnackBar(content: Text('$destination is coming soon'))),
+        message: '$destination is coming soon',
+      ),
     },
   );
 }

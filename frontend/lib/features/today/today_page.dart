@@ -77,29 +77,30 @@ class TodayPage extends ConsumerWidget {
 
   void _quickAdd(BuildContext context, WidgetRef ref) {
     final text = TextEditingController();
-    showDialog(
+    showFlowDialog<void>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Add task'),
+      builder: (dialogContext) => FlowDialog(
+        title: 'Add task',
         content: TextField(
           controller: text,
           autofocus: true,
           onSubmitted: (_) {
             ref.read(taskControllerProvider.notifier).add(text.text);
-            Navigator.pop(context);
+            Navigator.pop(dialogContext);
           },
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+          FlowDialogAction(
+            label: 'Cancel',
+            onPressed: () => Navigator.pop(dialogContext),
           ),
-          FilledButton(
+          FlowDialogAction(
+            label: 'Add',
+            primary: true,
             onPressed: () {
               ref.read(taskControllerProvider.notifier).add(text.text);
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
             },
-            child: const Text('Add'),
           ),
         ],
       ),
