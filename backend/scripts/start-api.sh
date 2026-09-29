@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+alembic upgrade head
 export PROMETHEUS_MULTIPROC_DIR=/tmp/flow-metrics
 mkdir -p "$PROMETHEUS_MULTIPROC_DIR"
 # This directory belongs only to this container's metrics files.
