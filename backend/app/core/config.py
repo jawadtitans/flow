@@ -27,13 +27,19 @@ class Settings(BaseSettings):
     auth_email_rate_limit: int = 5
     otp_email_rate_limit: int = 3
     otp_ip_rate_limit: int = 20
-    email_provider: Literal["console", "resend", "brevo"] = "console"
+    email_provider: Literal["console", "resend", "brevo", "smtp"] = "console"
     resend_api_key: str | None = None
     brevo_api_key: SecretStr | None = None
     brevo_sender_email: str | None = None
     brevo_sender_name: str | None = Field(
         default=None, validation_alias=AliasChoices("brevo_sender_name", "email_from_name")
     )
+    smtp_host: str = "localhost"
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_starttls: bool = True
+    smtp_use_tls: bool = False
     otp_mail_from: str = "Flow <onboarding@resend.dev>"
     register_rate_limit: int = 5
     refresh_rate_limit: int = 30
@@ -86,6 +92,13 @@ class Settings(BaseSettings):
             if not self.brevo_api_key or not self.brevo_api_key.get_secret_value().strip():
                 raise ValueError("BREVO_API_KEY is required when EMAIL_PROVIDER=brevo")
             _ = self.brevo_sender  # Validate the sender before accepting Brevo configuration.
+        if self.email_provider == "smtp":
+            if not self.smtp_host.strip():
+                raise ValueError("SMTP_HOST is required when EMAIL_PROVIDER=smtp")
+            if not self.smtp_username or not self.smtp_username.strip():
+                raise ValueError("SMTP_USERNAME is required when EMAIL_PROVIDER=smtp")
+            if not self.smtp_password or not self.smtp_password.strip():
+                raise ValueError("SMTP_PASSWORD is required when EMAIL_PROVIDER=smtp")
         try:
             ZoneInfo(self.reporting_timezone)
         except ZoneInfoNotFoundError as exc:

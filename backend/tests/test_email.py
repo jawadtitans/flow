@@ -155,6 +155,24 @@ def test_brevo_settings_load_environment_and_mail_from_fallback(tmp_path, monkey
     assert settings.brevo_sender == {"email": "hello@example.com", "name": "Flow"}
 
 
+def test_smtp_settings_load_environment():
+    settings = Settings(
+        _env_file=None,
+        email_provider="smtp",
+        smtp_host="smtp.gmail.com",
+        smtp_port=587,
+        smtp_username="user@gmail.com",
+        smtp_password="app-password",
+        mail_from="Flow <user@gmail.com>",
+    )
+    assert settings.email_provider == "smtp"
+    assert settings.smtp_host == "smtp.gmail.com"
+    assert settings.smtp_port == 587
+    assert settings.smtp_username == "user@gmail.com"
+    assert settings.smtp_password == "app-password"
+    assert settings.mail_from == "Flow <user@gmail.com>"
+
+
 @pytest.mark.parametrize("key", [None, "", "   "])
 def test_brevo_requires_api_key(key):
     with pytest.raises(ValidationError, match="BREVO_API_KEY is required"):
@@ -236,3 +254,39 @@ def test_brevo_sender_environment_precedence(tmp_path, monkeypatch):
     settings = Settings(_env_file=env_file)
     assert settings.brevo_sender == {"email": "primary@example.com", "name": "Primary"}
     assert settings.mail_from == "Mail From <mail@example.com>"
+
+
+def test_smtp_settings_load_environment_and_provider_selection(tmp_path, monkeypatch):
+    for name in (
+        "EMAIL_PROVIDER",
+        "SMTP_HOST",
+        "SMTP_PORT",
+        "SMTP_USERNAME",
+        "SMTP_PASSWORD",
+        "MAIL_FROM",
+        "EMAIL_FROM",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "EMAIL_PROVIDER=smtp\n"
+        "SMTP_HOST=smtp.gmail.com\n"
+        "SMTP_PORT=587\n"
+        "SMTP_USERNAME=javad.rahim.dev@gmail.com\n"
+        "SMTP_PASSWORD=app-password\n"
+        'EMAIL_FROM="Flow <javad.rahim.dev@gmail.com>"\n'
+    )
+    settings = Settings(_env_file=env_file)
+    assert settings.email_provider == "smtp"
+    assert settings.smtp_host == "smtp.gmail.com"
+    assert settings.smtp_port == 587
+    assert settings.smtp_username == "javad.rahim.dev@gmail.com"
+    assert settings.smtp_password == "app-password"
+    assert settings.mail_from == "Flow <javad.rahim.dev@gmail.com>"
+    monkeypatch.setenv("EMAIL_PROVIDER", "smtp")
+    monkeypatch.setenv("SMTP_HOST", "smtp.gmail.com")
+    monkeypatch.setenv("SMTP_PORT", "587")
+    monkeypatch.setenv("SMTP_USERNAME", "javad.rahim.dev@gmail.com")
+    monkeypatch.setenv("SMTP_PASSWORD", "app-password")
+    get_settings.cache_clear()
+    assert get_email_provider().__class__.__name__ == "SMTPEmailProvider"

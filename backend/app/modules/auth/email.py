@@ -6,7 +6,7 @@ from typing import Protocol
 import httpx
 
 from app.core.config import get_settings
-from app.modules.notifications.providers import BrevoProvider
+from app.modules.notifications.providers import BrevoProvider, SMTPProvider
 
 logger = logging.getLogger(__name__)
 
@@ -55,11 +55,23 @@ class BrevoEmailProvider:
         await BrevoProvider().send(recipient=recipient, subject=subject, body=body)
 
 
+class SMTPEmailProvider:
+    async def send(self, recipient: str, template: str, context: dict) -> None:
+        settings = get_settings()
+        if not settings.smtp_host or not settings.smtp_username or not settings.smtp_password:
+            raise RuntimeError("SMTP_HOST, SMTP_USERNAME, and SMTP_PASSWORD are required")
+        subject, body = render_template(template, context)
+        await SMTPProvider().send(recipient=recipient, subject=subject, body=body)
+
+
 def get_email_provider() -> EmailProvider:
-    if get_settings().email_provider == "brevo":
+    settings = get_settings()
+    if settings.email_provider == "brevo":
         return BrevoEmailProvider()
-    if get_settings().email_provider == "resend":
+    if settings.email_provider == "resend":
         return ResendEmailProvider()
-    if get_settings().email_provider == "console":
+    if settings.email_provider == "smtp":
+        return SMTPEmailProvider()
+    if settings.email_provider == "console":
         return ConsoleEmailProvider()
-    raise RuntimeError("EMAIL_PROVIDER must be console, resend, or brevo")
+    raise RuntimeError("EMAIL_PROVIDER must be console, resend, brevo, or smtp")
