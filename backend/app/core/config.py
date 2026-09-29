@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     auth_email_rate_limit: int = 5
     otp_email_rate_limit: int = 3
     otp_ip_rate_limit: int = 20
+    otp_expiry_minutes: int = 10
     email_provider: Literal["console", "resend", "brevo", "smtp"] = "console"
     resend_api_key: str | None = None
     brevo_api_key: SecretStr | None = None
@@ -40,7 +41,7 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_starttls: bool = True
     smtp_use_tls: bool = False
-    otp_mail_from: str = "Flow <onboarding@resend.dev>"
+    otp_mail_from: str = "Flow <noreply@flow.af>"
     register_rate_limit: int = 5
     refresh_rate_limit: int = 30
     public_rate_limit: int = 120
@@ -48,14 +49,8 @@ class Settings(BaseSettings):
     admin_rate_limit: int = 120
     sentry_dsn: str | None = None
     release: str = "development"
-    smtp_host: str = "localhost"
-    smtp_port: int = 1025
-    smtp_username: str | None = None
-    smtp_password: str | None = None
-    smtp_starttls: bool = False
-    smtp_use_tls: bool = False
     mail_from: str = Field(
-        default="Flow <noreply@localhost>",
+        default="Flow <noreply@flow.af>",
         validation_alias=AliasChoices("mail_from", "email_from"),
     )
     public_app_url: str = "http://localhost:5173"

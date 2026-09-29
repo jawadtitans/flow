@@ -7,12 +7,22 @@ from pydantic import SecretStr, ValidationError
 from sqlalchemy import select
 
 from app.core.config import Settings, get_settings
-from app.modules.auth.email import get_email_provider
+from app.modules.auth.email import build_otp_email, get_email_provider
 from app.modules.notifications import providers
 from app.modules.notifications.models import OutboundEmail
 from app.modules.notifications.providers import BrevoProvider, DeliveryError
 from app.modules.notifications.service import deliver_email
 from app.shared.time import utcnow
+
+
+def test_build_otp_email_renders_secure_html_template():
+    html = build_otp_email("482961", expiry_minutes=10)
+    assert "<html" in html.lower()
+    assert "Verify your email" in html
+    assert "482961" in html
+    assert "10 minutes" in html
+    assert "Flow.af Support Team" in html
+    assert "Never share this verification code" in html
 
 
 @pytest.fixture

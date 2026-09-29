@@ -72,11 +72,13 @@ class FCMProvider:
 
 
 class SMTPProvider:
-    async def send(self, *, recipient: str, subject: str, body: str):
+    async def send(self, *, recipient: str, subject: str, body: str, html: str | None = None):
         settings = get_settings()
         message = EmailMessage()
         message["From"], message["To"], message["Subject"] = settings.mail_from, recipient, subject
         message.set_content(body)
+        if html:
+            message.add_alternative(html, subtype="html")
         try:
             await aiosmtplib.send(
                 message,
@@ -93,7 +95,7 @@ class SMTPProvider:
 
 
 class BrevoProvider:
-    async def send(self, *, recipient: str, subject: str, body: str):
+    async def send(self, *, recipient: str, subject: str, body: str, html: str | None = None):
         settings = get_settings()
         if not settings.brevo_api_key or not settings.brevo_api_key.get_secret_value().strip():
             raise DeliveryError("brevo_missing_api_key", permanent=True)
@@ -101,6 +103,14 @@ class BrevoProvider:
             sender = settings.brevo_sender
         except ValueError:
             raise DeliveryError("brevo_invalid_sender", permanent=True) from None
+        payload = {
+            "sender": sender,
+            "to": [{"email": recipient}],
+            "subject": subject,
+            "textContent": body,
+        }
+        if html:
+            payload["htmlContent"] = html
         try:
             async with httpx.AsyncClient(timeout=10) as client:
                 response = await client.post(
@@ -109,12 +119,7 @@ class BrevoProvider:
                         "api-key": settings.brevo_api_key.get_secret_value().strip(),
                         "Accept": "application/json",
                     },
-                    json={
-                        "sender": sender,
-                        "to": [{"email": recipient}],
-                        "subject": subject,
-                        "textContent": body,
-                    },
+                    json=payload,
                 )
         except httpx.RequestError as exc:
             raise DeliveryError(f"brevo_{type(exc).__name__}") from None
