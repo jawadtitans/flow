@@ -1,0 +1,1 @@
+Run `alembic revision --autogenerate -m "description"` after configuring `alembic.ini` for deployment. The development app creates the initial schema to make the first slice runnable without a migration command.
