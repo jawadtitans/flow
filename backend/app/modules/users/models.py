@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, String, func, text
+from sqlalchemy import JSON, Boolean, Date, DateTime, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
 from app.core.database import Base
@@ -19,6 +19,18 @@ class User(Base):
     profile_completed: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=text("false")
     )
+    onboarding_completed: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
+    discovery_source: Mapped[str | None] = mapped_column(String(80))
+    interests: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
+    other_interest: Mapped[str | None] = mapped_column(String(120))
+    profile_photo: Mapped[str | None] = mapped_column(Text)
+
+    @property
+    def has_password(self) -> bool:
+        return bool(self.password_hash)
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     is_staff: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     email_verified: Mapped[bool] = mapped_column(

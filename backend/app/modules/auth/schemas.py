@@ -41,6 +41,10 @@ class ChangePasswordRequest(BaseModel):
     password: str = Field(min_length=12, max_length=128)
 
 
+class SetPasswordRequest(BaseModel):
+    password: str = Field(min_length=12, max_length=128)
+
+
 class AccessResponse(BaseModel):
     email: str
     account_exists: bool

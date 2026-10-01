@@ -2,6 +2,7 @@ import secrets
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -24,6 +25,7 @@ from app.modules.auth.schemas import (
     RefreshRequest,
     RegisterRequest,
     ResetPasswordRequest,
+    SetPasswordRequest,
     TokenResponse,
 )
 from app.modules.users.models import User
@@ -212,6 +214,27 @@ async def change_password(
     user.password_hash = await hash_password(payload.password)
     await revoke_sessions(db, user.id)
     await db.commit()
+
+
+@router.post("/set-password", response_model=UserResponse)
+async def set_password(
+    payload: SetPasswordRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not user.email_verified:
+        raise HTTPException(403, "Verify your email before setting a password")
+    hashed = await hash_password(payload.password)
+    result = await db.execute(
+        update(User)
+        .where(User.id == user.id, User.password_hash.is_(None))
+        .values(password_hash=hashed)
+    )
+    if result.rowcount != 1:
+        raise HTTPException(409, "A password is already set. Use password reset to change it.")
+    await db.commit()
+    await db.refresh(user)
+    return user
 
 
 @router.post("/request-access", response_model=AccessResponse)
