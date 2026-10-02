@@ -10,9 +10,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-final appRouter = createAppRouter();
+late GoRouter appRouter;
+late ProviderContainer authContainer;
 
 void main() {
   setUp(() {
@@ -21,7 +23,7 @@ void main() {
     flowNavigationVisible.value = true;
   });
 
-  Future<void> open(
+  Future<ProviderContainer> open(
     WidgetTester tester, {
     String route = '/auth',
     Size size = const Size(390, 844),
@@ -42,25 +44,32 @@ void main() {
       hasPassword: hasPassword,
       profileCompleted: profileCompleted,
     );
-    final client = api.client();
-    final container = ProviderContainer(
-      overrides: [
-        settingsStorageProvider.overrideWithValue(storage),
-        apiClientProvider.overrideWithValue(client),
-      ],
-    );
-    addTearDown(container.dispose);
-    addTearDown(client.close);
-    if (['/auth/code', '/auth/password', '/auth/profile'].contains(route)) {
-      await container
-          .read(authControllerProvider.notifier)
-          .requestAccess('hello@flow.example');
-      if (route == '/auth/profile')
+    late ProviderContainer container;
+    await tester.runAsync(() async {
+      final client = api.client();
+      container = ProviderContainer(
+        overrides: [
+          settingsStorageProvider.overrideWithValue(storage),
+          apiClientProvider.overrideWithValue(client),
+        ],
+      );
+      addTearDown(container.dispose);
+      addTearDown(client.close);
+      if (['/auth/code', '/auth/password', '/auth/profile'].contains(route)) {
         await container
             .read(authControllerProvider.notifier)
-            .verifyOtp('123456');
-    }
-    appRouter.go(route);
+            .requestAccess('hello@flow.example');
+        if (route == '/auth/profile') {
+          await container
+              .read(authControllerProvider.notifier)
+              .verifyOtp('123456');
+        }
+      }
+    });
+    final router = createAppRouter(initialLocation: route);
+    authContainer = container;
+    appRouter = router;
+    addTearDown(router.dispose);
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -75,6 +84,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    return container;
   }
 
   Finder input(String key) => find.descendant(
@@ -84,11 +94,24 @@ void main() {
 
   Finder button(String text) => find.widgetWithText(FilledButton, text);
 
+  Future<void> waitForAuth(WidgetTester tester) async {
+    for (var i = 0; i < 100; i++) {
+      await tester.pump(const Duration(milliseconds: 20));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 5)),
+      );
+      await tester.pump(const Duration(milliseconds: 20));
+      if (!authContainer.read(authControllerProvider).busy) return;
+    }
+    fail('The authentication request did not finish.');
+  }
+
   Future<void> tap(WidgetTester tester, Finder finder) async {
     await tester.pump();
     await tester.ensureVisible(finder);
     await tester.pumpAndSettle();
     await tester.tap(finder);
+    await waitForAuth(tester);
     await tester.pumpAndSettle();
   }
 
@@ -121,10 +144,27 @@ void main() {
     await tester.enterText(input('sign-in-identifier'), 'new@flow.example');
     await tap(tester, button('Continue'));
     expect(find.text('Enter your code'), findsOneWidget);
-    expect(find.text('Sign in with password instead'), findsNothing);
+    expect(find.text('Try another way'), findsNothing);
     expect(find.text('Forgot password?'), findsNothing);
     await close(tester);
   });
+
+  testWidgets(
+    'password alternative appears only after an existing account requests OTP',
+    (tester) async {
+      await open(tester);
+      expect(find.text('Try another way'), findsNothing);
+      expect(find.text('Sign in with password instead'), findsNothing);
+      await tester.enterText(input('sign-in-identifier'), 'hello@flow.example');
+      await tap(tester, button('Continue'));
+      expect(find.text('Try another way'), findsOneWidget);
+      expect(find.text('Forgot password?'), findsNothing);
+      await tap(tester, find.text('Try another way'));
+      expect(find.text('Enter your password'), findsOneWidget);
+      expect(find.text('Forgot password?'), findsOneWidget);
+      await close(tester);
+    },
+  );
 
   testWidgets(
     'returning profile-complete accounts go from OTP through getting ready to home',
@@ -136,10 +176,22 @@ void main() {
         find.byKey(const ValueKey('verification-code')),
         '123456',
       );
-      await tester.tap(button('Confirm'));
       await tester.pump();
+      await tester.tap(button('Confirm'));
+      await waitForAuth(tester);
+      for (
+        var i = 0;
+        i < 20 && find.text('Getting Ready').evaluate().isEmpty;
+        i++
+      ) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('Getting Ready'), findsOneWidget);
+      expect(
+        find.text('Getting Ready'),
+        findsOneWidget,
+        reason: appRouter.routeInformationProvider.value.uri.path,
+      );
       await tester.pump(const Duration(seconds: 3));
       await tester.pumpAndSettle();
       expect(appRouter.routeInformationProvider.value.uri.path, '/today');
@@ -271,7 +323,7 @@ void main() {
       await open(tester);
       await tester.enterText(input('sign-in-identifier'), 'hello@flow.example');
       await tap(tester, button('Continue'));
-      await tap(tester, find.text('Sign in with password instead'));
+      await tap(tester, find.text('Try another way'));
       expect(find.text('Enter your password'), findsOneWidget);
       expect(tester.widget<FilledButton>(button('Continue')).onPressed, isNull);
       await tester.enterText(input('sign-in-password'), 'correct-password');

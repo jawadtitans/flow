@@ -1,6 +1,10 @@
 import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:go_router/go_router.dart';
-import '../auth/presentation/profile_page.dart';
+import 'presentation/account_settings_pages.dart';
+import 'presentation/security_pages.dart';
+import 'presentation/app_lock_pages.dart';
+import 'presentation/device_settings_pages.dart';
+import 'presentation/flow_pro_page.dart';
 
 import 'presentation/settings_information_pages.dart';
 import 'presentation/settings_option_pages.dart';
@@ -10,6 +14,32 @@ final settingsRoute = GoRoute(
   path: '/settings',
   builder: (context, state) => const SettingsPage(),
   routes: [
+    GoRoute(path: 'pro', builder: (context, state) => const FlowProPage()),
+    GoRoute(
+      path: 'widget',
+      builder: (context, state) => const WidgetSettingsPage(),
+    ),
+    GoRoute(
+      path: 'permissions',
+      builder: (context, state) => const PermissionsSettingsPage(),
+    ),
+    GoRoute(
+      path: 'language',
+      builder: (context, state) => const LanguageSettingsPage(),
+    ),
+    GoRoute(path: 'mfa', builder: (context, state) => const MfaSettingsPage()),
+    GoRoute(
+      path: 'passkeys',
+      builder: (context, state) => const PasskeysPage(),
+    ),
+    GoRoute(
+      path: 'app-lock',
+      builder: (context, state) => const AppLockSettingsPage(),
+    ),
+    GoRoute(
+      path: 'password',
+      builder: (context, state) => const ChangePasswordPage(),
+    ),
     GoRoute(
       path: 'appearance',
       builder: (context, state) => const AppearanceSettingsPage(),
@@ -21,16 +51,6 @@ final settingsRoute = GoRoute(
     GoRoute(
       path: 'privacy',
       builder: (context, state) => const PrivacySettingsPage(),
-      routes: [
-        GoRoute(
-          path: 'information',
-          builder: (context, state) => const InformationSettingsPage(),
-        ),
-        GoRoute(
-          path: 'mentions',
-          builder: (context, state) => const MentionSettingsPage(),
-        ),
-      ],
     ),
     GoRoute(
       path: 'help',
@@ -84,19 +104,24 @@ final settingsRoute = GoRoute(
       builder: (context, state) => const AccountsSettingsPage(),
       routes: [
         GoRoute(
+          path: 'phone',
+          builder: (context, state) => const AddPhoneNumberPage(),
+        ),
+        GoRoute(
+          path: 'verify-phone',
+          builder: (context, state) => VerifyPhonePage(
+            verification: state.extra is PhoneVerification
+                ? state.extra as PhoneVerification
+                : null,
+          ),
+        ),
+        GoRoute(
           path: 'details',
-          builder: (context, state) => const ProfilePage(),
+          builder: (context, state) => const PersonalDetailsPage(),
         ),
         GoRoute(
           path: 'security',
-          builder: (context, state) => const SettingsArticlePage(
-            title: 'Password & security',
-            heading: 'Signing in securely',
-            body:
-                'You can sign in with a one-time email code. New accounts do not need a password. If your account already has a password, use Forgot password on the sign-in screen to reset it. Resetting a password ends all existing sessions.',
-            icon: LucideIcons.key_round,
-            fallback: '/settings/accounts',
-          ),
+          builder: (context, state) => const PasswordSecurityPage(),
         ),
       ],
     ),

@@ -51,7 +51,7 @@ class _StartupScreenState extends ConsumerState<StartupScreen> {
     final user = ref.read(authControllerProvider).user;
     context.go(
       user != null
-          ? (user.profileCompleted ? '/today' : '/auth/profile')
+          ? user.nextRoute
           : ref.read(welcomeControllerProvider)
           ? '/auth'
           : '/welcome',

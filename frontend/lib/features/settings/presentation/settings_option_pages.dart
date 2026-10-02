@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -87,102 +88,30 @@ class NotificationSettingsPage extends ConsumerWidget {
 
 class PrivacySettingsPage extends StatelessWidget {
   const PrivacySettingsPage({super.key});
-
   @override
-  Widget build(BuildContext context) => SettingsScaffold(
-    title: 'Data & privacy',
-    children: [
-      SettingsGroup(
-        children: [
-          SettingsRow(
-            title: 'Manage your information',
-            onTap: () => context.push('/settings/privacy/information'),
-          ),
-          SettingsRow(
-            title: 'Mentions',
-            onTap: () => context.push('/settings/privacy/mentions'),
-          ),
-        ],
-      ),
-    ],
-  );
-}
-
-class MentionSettingsPage extends ConsumerWidget {
-  const MentionSettingsPage({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final audience = ref.watch(
-      settingsControllerProvider.select((s) => s.mentions),
-    );
+  Widget build(BuildContext context) {
+    final c = AppLocalizations.of(context)!;
     return SettingsScaffold(
-      title: 'Mentions',
-      fallback: '/settings/privacy',
+      title: c.dataPrivacy,
       children: [
-        const SettingsSectionLabel('Who can mention you'),
+        SettingsSectionLabel(c.security),
         SettingsGroup(
           children: [
-            for (final choice in const [
-              ('Everyone', MentionAudience.everyone),
-              ('People in my workspace', MentionAudience.teammates),
-              ('No one', MentionAudience.nobody),
+            for (final row in [
+              (c.mfa, 'mfa', LucideIcons.shield_check),
+              (c.passkeys, 'passkeys', LucideIcons.key_round),
+              (c.appLock, 'app-lock', LucideIcons.lock_keyhole),
             ])
-              _ChoiceRow(
-                title: choice.$1,
-                selected: audience == choice.$2,
-                onTap: () => saveSettings(
-                  context,
-                  () => ref
-                      .read(settingsControllerProvider.notifier)
-                      .setMentions(choice.$2),
-                ),
+              SettingsRow(
+                title: row.$1,
+                icon: row.$3,
+                onTap: () => context.push('/settings/${row.$2}'),
               ),
           ],
-        ),
-        const SettingsNote(
-          'Saved on this device. Account-wide mention controls aren’t available yet.',
         ),
       ],
     );
   }
-}
-
-class InformationSettingsPage extends StatelessWidget {
-  const InformationSettingsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) => SettingsScaffold(
-    title: 'Your information',
-    fallback: '/settings/privacy',
-    children: [
-      const SettingsSectionLabel('On this device'),
-      const SettingsGroup(
-        children: [
-          SettingsRow(
-            icon: LucideIcons.smartphone,
-            title: 'App preferences',
-            subtitle:
-                'Your appearance, notification and mention preferences are stored on this device.',
-          ),
-        ],
-      ),
-      const SizedBox(height: 28),
-      const SettingsSectionLabel('Your account'),
-      SettingsGroup(
-        children: [
-          SettingsRow(
-            title: 'Account information',
-            icon: LucideIcons.circle_user_round,
-            onTap: () => context.push('/settings/accounts'),
-          ),
-        ],
-      ),
-      const SettingsNote(
-        'No account is connected. Account data export and deletion aren’t available in this version of Flow.',
-      ),
-    ],
-  );
 }
 
 class _ChoiceRow extends StatelessWidget {

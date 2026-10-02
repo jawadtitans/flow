@@ -6,6 +6,7 @@ import '../../auth/auth_controller.dart';
 
 import '../../../core/theme/flow_tokens.dart';
 import 'settings_components.dart';
+import 'account_actions.dart';
 
 class HelpSettingsPage extends StatelessWidget {
   const HelpSettingsPage({super.key});
@@ -158,6 +159,7 @@ class AccountsSettingsPage extends ConsumerWidget {
     return SettingsScaffold(
       title: 'Accounts Center',
       children: [
+        if (user != null) const AccountPhotoEditor(),
         const Padding(
           padding: EdgeInsets.only(left: 16, bottom: 14),
           child: FlowSettingsBrand(),
@@ -196,8 +198,9 @@ class AccountsSettingsPage extends ConsumerWidget {
             SettingsRow(
               title: 'Personal details',
               icon: LucideIcons.user_round,
-              onTap: () =>
-                  context.push(user == null ? '/auth' : '/auth/profile'),
+              onTap: () => context.push(
+                user == null ? '/auth' : '/settings/accounts/details',
+              ),
             ),
             SettingsRow(
               title: 'Password & security',

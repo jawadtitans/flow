@@ -6,8 +6,14 @@ import 'package:flow_app/core/network/api_client.dart';
 import 'package:flow_app/core/storage/session_storage.dart';
 
 class FakeAuthApi implements HttpClientAdapter {
-  FakeAuthApi({this.hasPassword = false, bool profileCompleted = false}) {
+  FakeAuthApi({
+    this.hasPassword = false,
+    bool profileCompleted = false,
+    bool onboardingCompleted = true,
+  }) {
     user['profile_completed'] = profileCompleted;
+    user['has_password'] = hasPassword;
+    user['onboarding_completed'] = onboardingCompleted;
   }
   bool hasPassword;
   String? sendError;
@@ -56,16 +62,18 @@ class FakeAuthApi implements HttpClientAdapter {
           'has_password': hasPassword,
         });
       case 'auth/verify-otp':
-        if (data['code'] != '123456')
+        if (data['code'] != '123456') {
           return reply({'detail': 'Invalid code. Please try again.'}, 400);
+        }
         return reply({
           'access_token': 'access',
           'refresh_token': 'refresh',
           'profile_completed': user['profile_completed'],
         });
       case 'auth/login-password':
-        if (data['password'] != 'correct-password')
+        if (data['password'] != 'correct-password') {
           return reply({'detail': 'Invalid email or password'}, 401);
+        }
         return reply({
           'access_token': 'access',
           'refresh_token': 'refresh',
@@ -77,18 +85,32 @@ class FakeAuthApi implements HttpClientAdapter {
           'refresh_token': 'new-refresh',
         });
       case 'me':
+        if (options.method == 'DELETE') return reply(null, 204);
+        return reply(user);
+      case 'auth/set-password':
+        hasPassword = true;
+        user['has_password'] = true;
+        return reply(user);
+      case 'me/onboarding':
+        user.addAll(Map<String, dynamic>.from(data));
+        user['onboarding_completed'] = data['completed'];
+        return reply(user);
+      case 'me/photo':
+        user['profile_photo'] = data['photo'];
         return reply(user);
       case 'auth/complete-profile':
-        if (!options.headers.containsKey('Authorization'))
+        if (!options.headers.containsKey('Authorization')) {
           return reply({'detail': 'Not authenticated'}, 401);
+        }
         user.addAll(Map<String, dynamic>.from(data));
         user['profile_completed'] = true;
         return reply(user);
       case 'auth/forgot-password':
         return reply({'detail': 'Code requested'}, 202);
       case 'auth/reset-password':
-        if (data['code'] != '123456')
+        if (data['code'] != '123456') {
           return reply({'detail': 'Invalid reset code'}, 400);
+        }
         return reply(null, 204);
       case 'auth/logout':
         return reply(null, 204);

@@ -16,10 +16,7 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 String get defaultApiBaseUrl {
   const configured = String.fromEnvironment('API_BASE_URL');
   if (configured.isNotEmpty) return configured;
-  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-    return 'http://10.0.2.2:8000/api/v1/';
-  }
-  return 'http://localhost:8000/api/v1/';
+  return 'https://flow-gxog.onrender.com/api/v1/';
 }
 
 class AuthFailure implements Exception {
@@ -33,13 +30,30 @@ String authErrorMessage(Object error) {
   if (error is AuthFailure) return error.message;
   if (error is DioException) {
     if (error.error is AuthFailure) return (error.error as AuthFailure).message;
+    if (error.response?.statusCode == 404 &&
+        error.requestOptions.uri.path.endsWith('/auth/set-password')) {
+      return 'Password setup is not available on this server yet. '
+          'Please try again after Flow is updated.';
+    }
+    if ((error.response?.statusCode ?? 0) >= 500) {
+      final data = error.response?.data;
+      if (error.response?.statusCode == 503 &&
+          data is Map &&
+          data['detail'] is String) {
+        return data['detail'] as String;
+      }
+      return 'Flow is having a server problem. Please try again shortly.';
+    }
     final data = error.response?.data;
-    if (data is Map && data['detail'] is String)
+    if (data is Map && data['detail'] is String) {
       return data['detail'] as String;
-    if (error.response?.statusCode == 422)
+    }
+    if (error.response?.statusCode == 422) {
       return 'Please check your details and try again.';
-    if (error.response == null)
+    }
+    if (error.response == null) {
       return 'Could not reach Flow. Check your connection and try again.';
+    }
   }
   return 'Something went wrong. Please try again.';
 }
@@ -71,13 +85,22 @@ class ApiClient {
               );
               return;
             }
-            if (_accessToken != null)
+            if (_accessToken != null) {
               options.headers['Authorization'] = 'Bearer $_accessToken';
+            }
           }
           handler.next(options);
         },
         onError: (error, handler) async {
           final request = error.requestOptions;
+          if (kDebugMode) {
+            debugPrint(
+              'Flow API: ${request.method} ${request.uri.host}'
+              '${request.uri.path} '
+              'status=${error.response?.statusCode ?? "no response"} '
+              'type=${error.type.name}',
+            );
+          }
           if (request.extra['authenticated'] == true &&
               request.extra['sessionGeneration'] != _generation) {
             handler.next(error);
@@ -140,15 +163,17 @@ class ApiClient {
 
   Future<void> _saveTokens(Map<String, dynamic> tokens, int generation) =>
       _serializeStorage(() async {
-        if (generation != _generation)
+        if (generation != _generation) {
           throw const AuthFailure(
             'Your session has changed. Please sign in again.',
           );
+        }
         await storage.write(tokens['refresh_token'] as String);
-        if (generation != _generation)
+        if (generation != _generation) {
           throw const AuthFailure(
             'Your session has changed. Please sign in again.',
           );
+        }
         _accessToken = tokens['access_token'] as String;
       });
 
@@ -170,10 +195,11 @@ class ApiClient {
         'auth/refresh',
         data: {'refresh_token': token},
       );
-      if (generation != _generation)
+      if (generation != _generation) {
         throw const AuthFailure(
           'Your session has changed. Please sign in again.',
         );
+      }
       await _saveTokens(result.data!, generation);
     } on DioException catch (error) {
       if (generation == _generation &&

@@ -7,12 +7,136 @@ import 'package:flow_app/app/router/app_router.dart';
 import 'package:flow_app/core/network/api_client.dart';
 import 'package:flow_app/core/storage/session_storage.dart';
 import 'package:flow_app/features/auth/auth_controller.dart';
+import 'package:flow_app/features/auth/auth_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_auth_api.dart';
 
 void main() {
+  test('server failures explain availability without exposing internals', () {
+    final request = RequestOptions(path: 'auth/request-access');
+    DioException failure(int status, Object data) => DioException(
+      requestOptions: request,
+      response: Response(
+        requestOptions: request,
+        statusCode: status,
+        data: data,
+      ),
+      type: DioExceptionType.badResponse,
+    );
+    expect(
+      authErrorMessage(failure(500, 'Internal Server Error')),
+      'Flow is having a server problem. Please try again shortly.',
+    );
+    expect(
+      authErrorMessage(failure(500, {'detail': 'database exception'})),
+      'Flow is having a server problem. Please try again shortly.',
+    );
+    expect(
+      authErrorMessage(failure(503, {'detail': 'Could not send your code.'})),
+      'Could not send your code.',
+    );
+  });
+
+  test('missing password endpoint explains the server update requirement', () {
+    final request = RequestOptions(
+      baseUrl: 'https://flow.example/api/v1/',
+      path: 'auth/set-password',
+    );
+    final error = DioException(
+      requestOptions: request,
+      response: Response(
+        requestOptions: request,
+        statusCode: 404,
+        data: {'detail': 'Not Found'},
+      ),
+      type: DioExceptionType.badResponse,
+    );
+    expect(
+      authErrorMessage(error),
+      'Password setup is not available on this server yet. '
+      'Please try again after Flow is updated.',
+    );
+    expect(
+      authErrorMessage(
+        error.copyWith(
+          response: Response(
+            requestOptions: request,
+            statusCode: 409,
+            data: {'detail': 'A password is already set.'},
+          ),
+        ),
+      ),
+      'A password is already set.',
+    );
+  });
+
+  test('missing onboarding status never sends an account directly home', () {
+    final user = FlowUser.fromJson({
+      'email': 'new@example.com',
+      'profile_completed': true,
+    });
+    expect(user.onboardingCompleted, isFalse);
+    expect(user.nextRoute, '/auth/onboarding');
+  });
+
+  test(
+    'new signup saves password, profile, answers and completion in order',
+    () async {
+      final backend = FakeAuthApi(onboardingCompleted: false);
+      final client = backend.client();
+      final container = ProviderContainer(
+        overrides: [apiClientProvider.overrideWithValue(client)],
+      );
+      addTearDown(container.dispose);
+      addTearDown(client.close);
+      final auth = container.read(authControllerProvider.notifier);
+      await auth.requestAccess('new@example.com');
+      await auth.verifyOtp('123456');
+      expect(
+        container.read(authControllerProvider).user!.nextRoute,
+        '/auth/set-password',
+      );
+      await auth.setPassword('my-new-long-password');
+      expect(
+        container.read(authControllerProvider).user!.nextRoute,
+        '/auth/profile',
+      );
+      await auth.completeProfile('Amina', 'Ahmadi', DateTime(2000, 2, 29));
+      expect(
+        container.read(authControllerProvider).user!.nextRoute,
+        '/auth/onboarding',
+      );
+      expect(
+        authRedirect(container.read(authControllerProvider), '/today'),
+        '/auth/onboarding',
+      );
+      await auth.saveOnboarding('Instagram', [
+        'Technology',
+        'Other',
+      ], 'Architecture');
+      expect(
+        container.read(authControllerProvider).user!.nextRoute,
+        '/auth/introduction',
+      );
+      expect(
+        authRedirect(container.read(authControllerProvider), '/today'),
+        '/auth/introduction',
+      );
+      await auth.saveOnboarding(
+        'Instagram',
+        ['Technology', 'Other'],
+        'Architecture',
+        completed: true,
+      );
+      expect(container.read(authControllerProvider).user!.nextRoute, '/today');
+      expect(
+        authRedirect(container.read(authControllerProvider), '/today'),
+        isNull,
+      );
+    },
+  );
   test(
     'email first, passwordless OTP, profile and logout use authenticated API requests',
     () async {
@@ -39,6 +163,11 @@ void main() {
       expect(await auth.verifyOtp('000000'), isFalse);
       expect(container.read(authControllerProvider).user, isNull);
       expect(await auth.verifyOtp('123456'), isTrue);
+      expect(
+        authRedirect(container.read(authControllerProvider), '/today'),
+        '/auth/set-password',
+      );
+      expect(await auth.setPassword('a-new-long-password'), isTrue);
       expect(
         authRedirect(container.read(authControllerProvider), '/today'),
         '/auth/profile',

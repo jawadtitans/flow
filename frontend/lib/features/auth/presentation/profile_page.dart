@@ -72,7 +72,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   bool get _canContinue =>
       _firstName.text.trim().isNotEmpty &&
+      _firstName.text.trim().length <= 80 &&
       _lastName.text.trim().isNotEmpty &&
+      _lastName.text.trim().length <= 80 &&
       _birthday != null;
 
   Future<void> _pickBirthday() async {
@@ -183,8 +185,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   Future<void> _confirm() async {
     if (!_canContinue || ref.read(authControllerProvider).busy) return;
+    final user = ref.read(authControllerProvider).user;
     final editing =
-        ref.read(authControllerProvider).user?.profileCompleted ?? false;
+        user?.profileCompleted == true && user?.onboardingCompleted == true;
     dismissAuthKeyboard();
     final success = await ref
         .read(authControllerProvider.notifier)
@@ -193,7 +196,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       if (editing && context.canPop()) {
         context.pop();
       } else {
-        context.go('/today');
+        context.go(ref.read(authControllerProvider).user!.nextRoute);
       }
     }
   }
@@ -366,13 +369,7 @@ class _GettingReadyPageState extends ConsumerState<GettingReadyPage> {
     _timer = Timer(const Duration(milliseconds: 2400), () {
       if (!mounted) return;
       final user = ref.read(authControllerProvider).user;
-      context.go(
-        user == null
-            ? '/auth'
-            : user.profileCompleted
-            ? '/today'
-            : '/auth/profile',
-      );
+      context.go(user == null ? '/auth' : user.nextRoute);
     });
   }
 

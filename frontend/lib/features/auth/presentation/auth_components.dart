@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/flow_tokens.dart';
 import '../../../shared/widgets/flow_notification.dart';
+import '../../../shared/widgets/flow_press_feedback.dart';
 import '../../welcome/presentation/welcome_brand_mark.dart';
 
 const authErrorColor = Color(0xFFEF5350);
@@ -121,13 +122,15 @@ class AuthCircleButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) => IconButton.outlined(
-    tooltip: label,
-    onPressed: onPressed,
-    icon: Icon(icon, size: 26),
-    style: IconButton.styleFrom(
-      minimumSize: const Size.square(46),
-      side: BorderSide(color: Theme.of(context).dividerColor),
+  Widget build(BuildContext context) => FlowPressFeedback(
+    child: IconButton.outlined(
+      tooltip: label,
+      onPressed: onPressed,
+      icon: Icon(icon, size: 26),
+      style: IconButton.styleFrom(
+        minimumSize: const Size.square(46),
+        side: BorderSide(color: Theme.of(context).dividerColor),
+      ),
     ),
   );
 }
@@ -139,23 +142,26 @@ class AuthButton extends StatelessWidget {
   final VoidCallback? onPressed;
 
   @override
-  Widget build(BuildContext context) => FilledButton(
-    onPressed: onPressed,
-    style: FilledButton.styleFrom(
-      backgroundColor: FlowColors.blue,
-      foregroundColor: Colors.white,
-      disabledBackgroundColor: FlowColors.blue.withValues(alpha: .38),
-      disabledForegroundColor: Colors.white.withValues(alpha: .6),
-      minimumSize: const Size.fromHeight(48),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
-      shape: const StadiumBorder(),
-      textStyle: const TextStyle(
-        fontFamily: 'Roboto',
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) => FlowPressFeedback(
+    enabled: onPressed != null,
+    child: FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: FlowColors.blue,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: FlowColors.blue.withValues(alpha: .38),
+        disabledForegroundColor: Colors.white.withValues(alpha: .6),
+        minimumSize: const Size.fromHeight(48),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+        shape: const StadiumBorder(),
+        textStyle: const TextStyle(
+          fontFamily: 'Roboto',
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
       ),
+      child: Text(label, textAlign: TextAlign.center),
     ),
-    child: Text(label, textAlign: TextAlign.center),
   );
 }
 
@@ -166,18 +172,21 @@ class AuthLink extends StatelessWidget {
   final VoidCallback? onPressed;
 
   @override
-  Widget build(BuildContext context) => TextButton(
-    onPressed: onPressed,
-    style: TextButton.styleFrom(
-      foregroundColor: FlowColors.blue,
-      minimumSize: const Size(48, 44),
-      textStyle: const TextStyle(
-        fontFamily: 'Roboto',
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) => FlowPressFeedback(
+    enabled: onPressed != null,
+    child: TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: FlowColors.blue,
+        minimumSize: const Size(48, 44),
+        textStyle: const TextStyle(
+          fontFamily: 'Roboto',
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
       ),
+      child: Text(label, textAlign: TextAlign.center),
     ),
-    child: Text(label, textAlign: TextAlign.center),
   );
 }
 

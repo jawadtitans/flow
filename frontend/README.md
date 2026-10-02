@@ -22,19 +22,36 @@ flutter build web
 ```
 ## Backend authentication
 
-The existing authentication screens now use the FastAPI email-first flow:
-email → OTP (or password when available) → getting ready → profile or home.
+The email screen sends a verification code for sign-in or signup. Existing
+accounts with a password can select "Try another way" below OTP confirmation.
+New accounts follow OTP -> password and confirmation -> personal details ->
+discovery source -> interests -> avatar introductions -> getting ready -> home.
+Onboarding completion is saved separately from profile completion, so an
+interrupted signup resumes before home becomes available.
 Password reset requests and verifies a code, then sets a password of at least
-12 characters. Settings can edit profile details and revoke the current session.
+12 characters. Accounts Center supports profile details and photo editing.
+Settings asks for logout confirmation. Account deletion requires a dialog,
+typing `Delete`, and accepting the final permanent-deletion warning.
 
+Deploy the updated backend and run `alembic upgrade head` from
+`flow-backend/backend` before using the new account APIs. Migration
+`0004_account_onboarding` adds saved onboarding answers and profile photos.
+The default API is `https://flow-gxog.onrender.com/api/v1/`. A `404 Not Found`
+when creating a password means that deployment is missing
+`POST /api/v1/auth/set-password`; updating the mobile app alone cannot add it.
+Deploy the backend branch containing the account changes, including
+`requirements.lock`. The Docker startup script applies migrations automatically.
+Confirm the deployed schema at `/api/v1/openapi.json` includes the password
+endpoint before retrying signup. For local testing, override `API_BASE_URL`
+as shown below rather than contacting the hosted API.
 Start the migrated backend and Redis first. For local development, its default
 `EMAIL_PROVIDER=console` prints the six-digit code in the API log. See
-[`backend/AUTH_FLOW.md`](../backend/AUTH_FLOW.md) for email-provider configuration.
+[`AUTH_FLOW.md`](../flow-backend/backend/AUTH_FLOW.md) for email-provider configuration.
 
 ```sh
 flutter pub get
 flutter run -d chrome --web-port 8080 --dart-define=API_BASE_URL=http://localhost:8000/api/v1/
-# Android emulator (the default Android URL):
+# Android emulator:
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1/
 ```
 

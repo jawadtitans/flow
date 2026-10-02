@@ -7,6 +7,7 @@ import '../../../shared/widgets/flow_dialog.dart';
 
 import '../../../core/theme/flow_tokens.dart';
 import '../auth_controller.dart';
+import '../../../l10n/app_localizations.dart';
 import 'auth_components.dart';
 
 class SignInPage extends ConsumerStatefulWidget {
@@ -34,8 +35,9 @@ class _SignInPageState extends ConsumerState<SignInPage> {
   }
 
   Future<void> _continue() async {
-    if (!isEmail(_identifier.text) || ref.read(authControllerProvider).busy)
+    if (!isEmail(_identifier.text) || ref.read(authControllerProvider).busy) {
       return;
+    }
     dismissAuthKeyboard();
     final success = await ref
         .read(authControllerProvider.notifier)
@@ -118,6 +120,20 @@ class _SignInPageState extends ConsumerState<SignInPage> {
             ? _continue
             : null,
       ),
+      TextButton.icon(
+        icon: const Icon(Icons.fingerprint),
+        label: Text(AppLocalizations.of(context)!.signInPasskey),
+        onPressed: ref.watch(authControllerProvider).busy
+            ? null
+            : () async {
+                final success = await ref
+                    .read(authControllerProvider.notifier)
+                    .loginPasskey();
+                if (context.mounted && success) {
+                  context.go(ref.read(authControllerProvider).user!.nextRoute);
+                }
+              },
+      ),
     ],
   );
 }
@@ -162,7 +178,13 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
     if (success) {
       _code.clear();
       finishAuthAutofill();
-      context.go('/auth/getting-ready');
+      final user = ref.read(authControllerProvider).user!;
+      context.go(
+        user.nextRoute == '/today' ? '/auth/getting-ready' : user.nextRoute,
+      );
+    } else if (ref.read(authControllerProvider).mfaChallenge != null) {
+      _code.clear();
+      context.push('/auth/mfa');
     } else {
       setState(() => _invalid = true);
     }
@@ -293,22 +315,16 @@ class _VerificationPageState extends ConsumerState<VerificationPage> {
           onPressed: _code.text.length == 6 && !auth.busy ? _confirm : null,
         ),
         const SizedBox(height: 18),
-        if (auth.hasPassword)
+        if (auth.access?.accountExists == true && auth.hasPassword)
           AuthLink(
-            label: 'Sign in with password instead',
+            label: 'Try another way',
             onPressed: auth.busy
                 ? null
                 : () {
                     dismissAuthKeyboard();
+                    ref.read(authControllerProvider.notifier).clearError();
                     context.push('/auth/password');
                   },
-          ),
-        if (auth.hasPassword)
-          AuthLink(
-            label: 'Forgot password?',
-            onPressed: auth.busy
-                ? null
-                : () => context.push('/auth/reset-password'),
           ),
       ],
     );
@@ -338,10 +354,18 @@ class _PasswordPageState extends ConsumerState<PasswordPage> {
     final success = await ref
         .read(authControllerProvider.notifier)
         .loginPassword(_password.text);
+    if (mounted && ref.read(authControllerProvider).mfaChallenge != null) {
+      _password.clear();
+      context.push('/auth/mfa');
+      return;
+    }
     if (mounted && success) {
       _password.clear();
       finishAuthAutofill();
-      context.go('/auth/getting-ready');
+      final user = ref.read(authControllerProvider).user!;
+      context.go(
+        user.nextRoute == '/today' ? '/auth/getting-ready' : user.nextRoute,
+      );
     }
   }
 
@@ -552,11 +576,12 @@ class _ResetCodePageState extends ConsumerState<ResetCodePage> {
                   final success = await ref
                       .read(authControllerProvider.notifier)
                       .forgotPassword(auth.resetEmail);
-                  if (context.mounted && success)
+                  if (context.mounted && success) {
                     showAuthMessage(
                       context,
                       'A new reset code has been requested.',
                     );
+                  }
                 },
         ),
       ],

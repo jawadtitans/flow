@@ -3,6 +3,7 @@ import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/flow_tokens.dart';
+import 'flow_pro_banner.dart';
 import '../../../shared/widgets/flow_components.dart';
 
 const settingsLightCanvas = Color(0xFFF3F4F6);
@@ -12,6 +13,7 @@ class SettingsScaffold extends StatelessWidget {
     required this.title,
     required this.children,
     this.root = false,
+    this.allowBack = true,
     this.centerTitle = true,
     this.fallback = '/settings',
     super.key,
@@ -20,6 +22,7 @@ class SettingsScaffold extends StatelessWidget {
   final String title;
   final List<Widget> children;
   final bool root;
+  final bool allowBack;
   final bool centerTitle;
   final String fallback;
 
@@ -41,7 +44,15 @@ class SettingsScaffold extends StatelessWidget {
               20,
               padding.bottom + 40,
             ),
-            children: children,
+            children: [
+              FlowProBanner(
+                variant: root
+                    ? FlowProBannerVariant.large
+                    : FlowProBannerVariant.compact,
+              ),
+              const SizedBox(height: 24),
+              ...children,
+            ],
           ),
           FlowPageSoftEdges(
             topHeight: padding.top + 78,
@@ -60,13 +71,15 @@ class SettingsScaffold extends StatelessWidget {
                     semanticLabel: root ? 'Close settings' : 'Back',
                     size: 44,
                     iconSize: 22,
-                    onPressed: () {
-                      if (context.canPop()) {
-                        context.pop();
-                      } else {
-                        context.go(root ? '/today' : fallback);
-                      }
-                    },
+                    onPressed: !allowBack
+                        ? null
+                        : () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go(root ? '/today' : fallback);
+                            }
+                          },
                   ),
                 ),
                 const SizedBox(width: 12),

@@ -37,6 +37,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> visible(WidgetTester tester, Finder finder) async {
+    if (finder.evaluate().isEmpty) await tester.scrollUntilVisible(finder, 120);
+    await Scrollable.ensureVisible(tester.element(finder), alignment: .5);
+    await tester.pumpAndSettle();
+  }
+
   Future<void> back(WidgetTester tester) async {
     await tester.tap(find.bySemanticsLabel('Back'));
     await tester.pumpAndSettle();
@@ -69,6 +75,7 @@ void main() {
     await openApp(tester, location: '/inbox');
     await tester.tap(find.byTooltip('More'));
     await tester.pumpAndSettle();
+    await visible(tester, find.text('Settings'));
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
     expect(find.byType(FlowBottomNavigation), findsNothing);
@@ -76,6 +83,7 @@ void main() {
     expect(find.textContaining('Meta'), findsNothing);
     expect(find.byType(FlowPageSoftEdges), findsOneWidget);
 
+    await visible(tester, find.text('App appearance'));
     await tester.tap(find.text('App appearance'));
     await tester.pumpAndSettle();
     for (final choice in [
@@ -83,6 +91,7 @@ void main() {
       ('Light', ThemeMode.light),
       ('Automatic', ThemeMode.system),
     ]) {
+      await visible(tester, find.text(choice.$1));
       await tester.tap(find.text(choice.$1));
       await tester.pumpAndSettle();
       expect(
@@ -99,49 +108,53 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('notification and mention preferences survive page navigation', (
-    tester,
-  ) async {
-    await openApp(tester);
-    await tester.tap(find.text('Notifications'));
-    await tester.pumpAndSettle();
-    expect(
-      tester.widget<CupertinoSwitch>(find.byType(CupertinoSwitch)).value,
-      isFalse,
-    );
-    await tester.tap(find.text('Pause all'));
-    await tester.pumpAndSettle();
-    expect(
-      tester.widget<CupertinoSwitch>(find.byType(CupertinoSwitch)).value,
-      isTrue,
-    );
-    await back(tester);
+  testWidgets(
+    'notifications persist and privacy exposes security destinations',
+    (tester) async {
+      await openApp(tester);
+      await visible(tester, find.text('Notifications'));
+      await tester.tap(find.text('Notifications'));
+      await tester.pumpAndSettle();
+      await visible(tester, find.text('Pause all'));
+      expect(
+        tester.widget<CupertinoSwitch>(find.byType(CupertinoSwitch)).value,
+        isFalse,
+      );
+      await visible(tester, find.text('Pause all'));
+      await tester.tap(find.text('Pause all'));
+      await tester.pumpAndSettle();
+      await visible(tester, find.text('Pause all'));
+      expect(
+        tester.widget<CupertinoSwitch>(find.byType(CupertinoSwitch)).value,
+        isTrue,
+      );
+      await back(tester);
 
-    await tester.tap(find.text('Data & privacy'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Mentions'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('People in my workspace'));
-    await tester.pumpAndSettle();
-    final storage = await SharedPreferences.getInstance();
-    expect(storage.getString('settings.mentions'), 'teammates');
-    await back(tester);
-    await tester.tap(find.text('Manage your information'));
-    await tester.pumpAndSettle();
-    expect(find.text('App preferences'), findsOneWidget);
-    await back(tester);
-    await back(tester);
+      await visible(tester, find.text('Data & privacy'));
+      await tester.tap(find.text('Data & privacy'));
+      await tester.pumpAndSettle();
+      expect(find.text('Security'), findsOneWidget);
+      expect(find.text('Multi-factor authentication'), findsOneWidget);
+      expect(find.text('Passkeys'), findsOneWidget);
+      expect(find.text('App lock'), findsOneWidget);
+      expect(find.text('Mentions'), findsNothing);
+      expect(find.text('Manage your information'), findsNothing);
+      final storage = await SharedPreferences.getInstance();
+      await back(tester);
 
-    await tester.tap(find.text('Notifications'));
-    await tester.pumpAndSettle();
-    expect(
-      tester.widget<CupertinoSwitch>(find.byType(CupertinoSwitch)).value,
-      isTrue,
-    );
-    expect(storage.getBool('settings.pauseNotifications'), isTrue);
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
+      await visible(tester, find.text('Notifications'));
+      await tester.tap(find.text('Notifications'));
+      await tester.pumpAndSettle();
+      await visible(tester, find.text('Pause all'));
+      expect(
+        tester.widget<CupertinoSwitch>(find.byType(CupertinoSwitch)).value,
+        isTrue,
+      );
+      expect(storage.getBool('settings.pauseNotifications'), isTrue);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   testWidgets('all remaining options open pages with working back navigation', (
     tester,
@@ -153,16 +166,20 @@ void main() {
       ('Legal & safety', 'Terms of service'),
       ('Accounts Center', 'No account connected'),
     ]) {
+      await visible(tester, find.text(entry.$1));
       await tester.tap(find.text(entry.$1));
       await tester.pumpAndSettle();
+      await visible(tester, find.text(entry.$2));
       expect(find.text(entry.$2), findsOneWidget);
       await back(tester);
-      expect(find.text('App settings'), findsOneWidget);
+      expect(appRouter.routeInformationProvider.value.uri.path, '/settings');
     }
 
+    await visible(tester, find.text('Log out'));
     await tester.tap(find.text('Log out'));
     await tester.pumpAndSettle();
     expect(find.text('You’re not signed in'), findsOneWidget);
+    await visible(tester, find.text('Done'));
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     await tester.tap(find.bySemanticsLabel('Close settings'));
@@ -176,11 +193,8 @@ void main() {
   testWidgets('deep-linked settings pages support platform back', (
     tester,
   ) async {
-    await openApp(tester, location: '/settings/privacy/mentions');
-    expect(find.text('Who can mention you'), findsOneWidget);
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    expect(find.text('Manage your information'), findsOneWidget);
+    await openApp(tester, location: '/settings/privacy');
+    expect(find.text('Security'), findsOneWidget);
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.text('App settings'), findsOneWidget);
@@ -213,8 +227,10 @@ void main() {
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await openApp(tester, size: const Size(320, 568));
     await tester.scrollUntilVisible(find.text('Accounts Center'), 180);
+    await visible(tester, find.text('Accounts Center'));
     await tester.tap(find.text('Accounts Center'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('No account connected'), 100);
     expect(find.text('No account connected'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());

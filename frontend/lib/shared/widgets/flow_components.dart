@@ -3,10 +3,12 @@ import 'package:flutter_lucide/flutter_lucide.dart';
 
 import '../../core/theme/flow_tokens.dart';
 import '../../features/tasks/task.dart';
+import 'flow_press_feedback.dart';
 
 export 'flow_bottom_navigation.dart';
 export 'flow_dialog.dart';
 export 'flow_notification.dart';
+export 'flow_press_feedback.dart';
 
 /// Shared chrome state for overlays that must cover the persistent app dock.
 final flowNavigationVisible = ValueNotifier(true);
@@ -35,17 +37,20 @@ class FlowIconButton extends StatelessWidget {
     return Semantics(
       button: true,
       label: semanticLabel,
-      child: Material(
-        color: selected
-            ? (dark ? Colors.white12 : FlowColors.selected)
-            : (dark ? Colors.white10 : FlowColors.surface),
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: onPressed,
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: Icon(icon, size: iconSize),
+      child: FlowPressFeedback(
+        enabled: onPressed != null,
+        child: Material(
+          color: selected
+              ? (dark ? Colors.white12 : FlowColors.selected)
+              : (dark ? Colors.white10 : FlowColors.surface),
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onPressed,
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: Icon(icon, size: iconSize),
+            ),
           ),
         ),
       ),
@@ -216,13 +221,16 @@ class FlowHeaderActionIcon extends StatelessWidget {
       button: true,
       enabled: onPressed != null,
       label: semanticLabel,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onPressed,
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: Center(child: Icon(icon, size: iconSize)),
+      child: FlowPressFeedback(
+        enabled: onPressed != null,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onPressed,
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Center(child: Icon(icon, size: iconSize)),
+          ),
         ),
       ),
     );

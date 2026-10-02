@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,6 +10,11 @@ import 'features/welcome/welcome_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks([
+      'DejaVu Serif',
+    ], await rootBundle.loadString('assets/fonts/editorial/LICENSE.txt'));
+  });
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final preferences = await SharedPreferences.getInstance();
   runApp(

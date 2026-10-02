@@ -8,6 +8,8 @@ import '../../auth/presentation/auth_components.dart';
 import '../../../shared/widgets/flow_dialog.dart';
 
 import 'settings_components.dart';
+import '../../../l10n/app_localizations.dart';
+import 'account_actions.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -24,6 +26,9 @@ class SettingsPage extends ConsumerWidget {
           for (final option in const [
             (LucideIcons.bell, 'Notifications', 'notifications'),
             (LucideIcons.sun, 'App appearance', 'appearance'),
+            (LucideIcons.layout_grid, 'Widget', 'widget'),
+            (LucideIcons.shield, 'Permissions', 'permissions'),
+            (LucideIcons.globe, 'Language', 'language'),
             (LucideIcons.circle_question_mark, 'Help & support', 'help'),
             (LucideIcons.lock_keyhole, 'Data & privacy', 'privacy'),
             (LucideIcons.info, 'App info', 'info'),
@@ -31,7 +36,25 @@ class SettingsPage extends ConsumerWidget {
           ])
             SettingsRow(
               icon: option.$1,
-              title: option.$2,
+              title: switch (option.$3) {
+                'widget' => AppLocalizations.of(context)!.widget,
+                'permissions' => AppLocalizations.of(context)!.permissions,
+                'language' => AppLocalizations.of(context)!.language,
+                _ => option.$2,
+              },
+              trailing: option.$3 == 'language'
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context)!.english,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(LucideIcons.chevron_right, size: 20),
+                      ],
+                    )
+                  : null,
               onTap: () => context.push('/settings/${option.$3}'),
             ),
         ],
@@ -59,6 +82,7 @@ class SettingsPage extends ConsumerWidget {
               final auth = ref.read(authControllerProvider);
               if (auth.busy) return;
               if (auth.user != null) {
+                if (!await confirmLogout(context) || !context.mounted) return;
                 final success = await ref
                     .read(authControllerProvider.notifier)
                     .logout();
@@ -94,6 +118,19 @@ class SettingsPage extends ConsumerWidget {
           ),
         ],
       ),
+      if (ref.watch(authControllerProvider).user != null) ...[
+        const SizedBox(height: 12),
+        SettingsGroup(
+          children: [
+            SettingsRow(
+              icon: LucideIcons.trash,
+              title: 'Delete account',
+              destructive: true,
+              onTap: () => confirmAccountDeletion(context, ref),
+            ),
+          ],
+        ),
+      ],
     ],
   );
 }

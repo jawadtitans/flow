@@ -7,26 +7,64 @@ class FlowUser {
   const FlowUser({
     required this.email,
     required this.profileCompleted,
+    this.phoneNumber,
+    this.phoneVerified = false,
     this.firstName = '',
     this.lastName = '',
     this.birthDate,
+    this.hasPassword = false,
+    this.onboardingCompleted = false,
+    this.discoverySource,
+    this.interests = const [],
+    this.otherInterest,
+    this.profilePhoto,
   });
+  final String? phoneNumber;
+  final bool phoneVerified;
   final String email;
   final bool profileCompleted;
   final String firstName;
   final String lastName;
   final DateTime? birthDate;
+  final bool hasPassword;
+  final bool onboardingCompleted;
+  final String? discoverySource;
+  final List<String> interests;
+  final String? otherInterest;
+  final String? profilePhoto;
+  String get nextRoute {
+    if (!profileCompleted && !hasPassword) return '/auth/set-password';
+    if (!profileCompleted) return '/auth/profile';
+    if (!onboardingCompleted) {
+      return interests.isEmpty ? '/auth/onboarding' : '/auth/introduction';
+    }
+    return '/today';
+  }
+
   String get displayName => '$firstName $lastName'.trim();
 
   factory FlowUser.fromJson(Map<String, dynamic> data) => FlowUser(
     email: data['email'] as String,
+    phoneNumber: data['phone_number'] as String?,
+    phoneVerified: data['phone_verified'] == true,
     profileCompleted: data['profile_completed'] as bool,
+    hasPassword: data['has_password'] as bool? ?? false,
+    onboardingCompleted: data['onboarding_completed'] as bool? ?? false,
+    discoverySource: data['discovery_source'] as String?,
+    interests: (data['interests'] as List? ?? []).cast<String>(),
+    otherInterest: data['other_interest'] as String?,
+    profilePhoto: data['profile_photo'] as String?,
     firstName: data['first_name'] as String? ?? '',
     lastName: data['last_name'] as String? ?? '',
     birthDate: data['birth_date'] == null
         ? null
         : DateTime.parse(data['birth_date'] as String),
   );
+}
+
+class MfaChallengeRequired implements Exception {
+  const MfaChallengeRequired(this.id);
+  final String id;
 }
 
 class AccessInfo {
@@ -66,23 +104,67 @@ class AuthRepository {
   Future<FlowUser> loginPassword(String email, String password) =>
       _signIn('auth/login-password', {'email': email, 'password': password});
 
+  Future<FlowUser> setPassword(String password) async {
+    final response = await client.dio.post<Map<String, dynamic>>(
+      'auth/set-password',
+      data: {'password': password},
+      options: ApiClient.authenticated,
+    );
+    return FlowUser.fromJson(response.data!);
+  }
+
+  Future<FlowUser> saveOnboarding(
+    String source,
+    List<String> interests,
+    String? other, {
+    bool completed = false,
+  }) async {
+    final response = await client.dio.put<Map<String, dynamic>>(
+      'me/onboarding',
+      data: {
+        'discovery_source': source,
+        'interests': interests,
+        'other_interest': other,
+        'completed': completed,
+      },
+      options: ApiClient.authenticated,
+    );
+    return FlowUser.fromJson(response.data!);
+  }
+
+  Future<FlowUser> updatePhoto(String? photo) async {
+    final response = await client.dio.put<Map<String, dynamic>>(
+      'me/photo',
+      data: {'photo': photo},
+      options: ApiClient.authenticated,
+    );
+    return FlowUser.fromJson(response.data!);
+  }
+
+  Future<void> deleteAccount() async {
+    await client.dio.delete<void>(
+      'me',
+      data: {'confirmation': 'Delete', 'acknowledge': true},
+      options: ApiClient.authenticated,
+    );
+    await client.clear();
+  }
+
   Future<FlowUser> _signIn(String path, Map<String, dynamic> data) async {
     final response = await client.dio.post<Map<String, dynamic>>(
       path,
       data: data,
     );
-    await client.establish(response.data!);
-    try {
-      return await me();
-    } on DioException catch (error) {
-      if ([401, 403].contains(error.response?.statusCode)) rethrow;
+    if (response.data!['mfa_required'] == true) {
+      throw MfaChallengeRequired(response.data!['challenge_id'] as String);
     }
-    // The auth response is sufficient to route if this optional read is offline.
-    return FlowUser(
-      email: data['email'] as String,
-      profileCompleted: response.data!['profile_completed'] as bool,
-    );
+    await client.establish(response.data!);
+    // Routing depends on persisted password and onboarding progress.
+    return me();
   }
+
+  Future<FlowUser> verifyMfaChallenge(String challenge, String code) =>
+      _signIn('auth/mfa/verify', {'challenge_id': challenge, 'code': code});
 
   Future<FlowUser> me() async {
     final response = await client.dio.get<Map<String, dynamic>>(

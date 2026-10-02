@@ -1,0 +1,2 @@
+// Share release version values without linking Runner's Flutter plugins.
+#include "../Flutter/Generated.xcconfig"

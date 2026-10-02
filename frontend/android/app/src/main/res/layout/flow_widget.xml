@@ -1,0 +1,8 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="20dp" android:background="@drawable/flow_widget_background">
+  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_brand" android:textColor="#F3FAFF" android:textSize="22sp" android:textStyle="bold" />
+  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:text="@string/widget_prompt" android:textColor="#E0F1F8" android:textSize="16sp" android:paddingTop="8dp" android:paddingBottom="12dp" />
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+    <Button android:id="@+id/widget_ask" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:text="@string/widget_ask" />
+    <Button android:id="@+id/widget_voice" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" android:text="@string/widget_voice" />
+  </LinearLayout>
+</LinearLayout>

@@ -4,26 +4,32 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final settingsStorageProvider = Provider<SharedPreferences?>((ref) => null);
 
+const supportedSettingsLanguages = ['en'];
+
 enum MentionAudience { everyone, teammates, nobody }
 
 @immutable
 class FlowSettings {
   const FlowSettings({
     this.themeMode = ThemeMode.system,
+    this.language = 'en',
     this.pauseNotifications = false,
     this.mentions = MentionAudience.everyone,
   });
 
   final ThemeMode themeMode;
+  final String language;
   final bool pauseNotifications;
   final MentionAudience mentions;
 
   FlowSettings copyWith({
     ThemeMode? themeMode,
+    String? language,
     bool? pauseNotifications,
     MentionAudience? mentions,
   }) => FlowSettings(
     themeMode: themeMode ?? this.themeMode,
+    language: language ?? this.language,
     pauseNotifications: pauseNotifications ?? this.pauseNotifications,
     mentions: mentions ?? this.mentions,
   );
@@ -34,6 +40,12 @@ class SettingsController extends Notifier<FlowSettings> {
   FlowSettings build() {
     final storage = ref.watch(settingsStorageProvider);
     return FlowSettings(
+      language:
+          supportedSettingsLanguages.contains(
+            storage?.getString('settings.language'),
+          )
+          ? storage!.getString('settings.language')!
+          : 'en',
       themeMode: switch (storage?.getString('settings.appearance')) {
         'light' => ThemeMode.light,
         'dark' => ThemeMode.dark,
@@ -47,6 +59,16 @@ class SettingsController extends Notifier<FlowSettings> {
         _ => MentionAudience.everyone,
       },
     );
+  }
+
+  Future<void> setLanguage(String value) async {
+    if (value != 'en') throw ArgumentError('Translations are not available');
+    final storage = ref.read(settingsStorageProvider);
+    if (storage != null &&
+        !await storage.setString('settings.language', value)) {
+      throw StateError('Language could not be saved');
+    }
+    if (ref.mounted) state = state.copyWith(language: value);
   }
 
   Future<void> setThemeMode(ThemeMode value) async {
