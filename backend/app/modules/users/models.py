@@ -19,6 +19,9 @@ class User(Base):
     profile_completed: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=text("false")
     )
+    social_auth: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
     onboarding_completed: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=text("false")
     )

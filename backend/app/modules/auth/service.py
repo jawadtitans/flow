@@ -1,6 +1,7 @@
 from datetime import timedelta
 from uuid import UUID
 
+import httpx
 import jwt
 from fastapi import HTTPException
 from sqlalchemy import select, update
@@ -161,6 +162,91 @@ async def authenticate_otp(db: AsyncSession, redis, email: str, code: str):
     if not user.is_active:
         raise HTTPException(401, "Account is unavailable")
     user.email_verified = True
+    return await new_session(db, user)
+
+
+async def verify_google_access_token(access_token: str) -> tuple[str, str]:
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_publishable_key:
+        raise HTTPException(503, "Google sign-in is not configured")
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            response = await client.get(
+                f"{settings.supabase_url.rstrip('/')}/auth/v1/user",
+                headers={
+                    "apikey": settings.supabase_publishable_key.get_secret_value(),
+                    "Authorization": f"Bearer {access_token}",
+                },
+            )
+    except httpx.RequestError:
+        raise HTTPException(503, "Google sign-in verification is unavailable") from None
+    if response.status_code != 200:
+        raise HTTPException(401, "Invalid Google sign-in session")
+    try:
+        identity = response.json()
+    except ValueError:
+        raise HTTPException(
+            503, "Google sign-in verification returned an invalid response"
+        ) from None
+    if not isinstance(identity, dict):
+        raise HTTPException(401, "Invalid Google sign-in session")
+    app_metadata = identity.get("app_metadata")
+    if not isinstance(app_metadata, dict):
+        raise HTTPException(401, "Invalid Google sign-in session")
+    providers = app_metadata.get("providers")
+    provider = app_metadata.get("provider")
+    if provider != "google" and not (isinstance(providers, list) and "google" in providers):
+        raise HTTPException(401, "A Google account is required")
+    email = identity.get("email")
+    if (
+        not isinstance(email, str)
+        or not email.strip()
+        or not (identity.get("email_confirmed_at") or identity.get("confirmed_at"))
+    ):
+        raise HTTPException(401, "A verified Google email address is required")
+    metadata = identity.get("user_metadata")
+    name = ""
+    if isinstance(metadata, dict):
+        name = metadata.get("full_name") or metadata.get("name") or ""
+    if not isinstance(name, str):
+        name = ""
+    return otp.normalize_email(email), name.strip()[:100]
+
+
+async def authenticate_google(db: AsyncSession, access_token: str):
+    email, display_name = await verify_google_access_token(access_token)
+    name_parts = display_name.split(maxsplit=1)
+    first_name = name_parts[0][:50] if name_parts else None
+    last_name = name_parts[1][:49] if len(name_parts) > 1 else None
+    user = await find_user(db, email)
+    if not user:
+        user = User(
+            email=email,
+            display_name=display_name,
+            first_name=first_name,
+            last_name=last_name,
+            email_verified=True,
+            social_auth=True,
+        )
+        db.add(user)
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            user = await find_user(db, email)
+            if not user:
+                raise HTTPException(409, "Please try Google sign-in again") from None
+    if not user.is_active:
+        raise HTTPException(401, "Account is unavailable")
+    user.email_verified = True
+    user.social_auth = True
+    # A previously passwordless email account may have no profile names yet.
+    # Prefill those from the verified provider profile without overwriting any
+    # name the user has already supplied to Flow.
+    if not user.first_name and first_name:
+        user.first_name = first_name
+    if not user.last_name and last_name:
+        user.last_name = last_name
     return await new_session(db, user)
 
 

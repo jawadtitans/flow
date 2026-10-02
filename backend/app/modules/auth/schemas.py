@@ -55,6 +55,10 @@ class OtpRequest(EmailRequest):
     code: str = Field(pattern=r"^[0-9]{6}$")
 
 
+class GoogleAuthRequest(BaseModel):
+    access_token: str = Field(min_length=20, max_length=4096)
+
+
 class OtpResetRequest(OtpRequest):
     new_password: str = Field(min_length=12, max_length=128)
 

@@ -8,6 +8,16 @@ Both sign-in methods return access/refresh tokens and `profile_completed`.
 Only OTP verification creates a passwordless user; requesting a code creates
 no SQL user. Email addresses are normalized to lowercase.
 
+Google sign-in posts the Supabase access token to `POST /auth/google`.
+Configure `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in the backend
+environment. The endpoint verifies the token with Supabase Auth, requires a
+verified Google email, links an existing Flow account by that email or creates
+a new one, and returns the normal Flow access/refresh token pair. New Google
+accounts continue to personal details without requiring a Flow password.
+Configure the Google provider in Supabase and allow the app redirect
+`com.flow.app://login-callback/` in Supabase Auth. Apply migration
+`0005_social_auth` before deploying this endpoint.
+
 After sign-in, incomplete accounts submit `first_name`, `last_name` and
 `birth_date` (`YYYY-MM-DD`) to authenticated `PATCH /auth/complete-profile`.
 The same endpoint edits an existing profile. `/me` returns the new fields.

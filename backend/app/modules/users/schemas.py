@@ -15,6 +15,7 @@ class UserResponse(BaseModel):
     birth_date: date | None
     profile_completed: bool
     has_password: bool
+    social_auth: bool
     onboarding_completed: bool
     discovery_source: str | None
     interests: list[str]

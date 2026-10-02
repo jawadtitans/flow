@@ -19,6 +19,7 @@ from app.modules.auth.schemas import (
     ChangePasswordRequest,
     CompleteProfileRequest,
     EmailRequest,
+    GoogleAuthRequest,
     LoginRequest,
     OtpRequest,
     OtpResetRequest,
@@ -269,6 +270,16 @@ async def login_password(
     tokens = await service.authenticate_with_backoff(
         db, request.app.state.limiter, str(payload.email), payload.password
     )
+    return token_response(tokens, response, False)
+
+
+@router.post("/google", response_model=AuthTokenResponse)
+async def login_google(
+    payload: GoogleAuthRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    tokens = await service.authenticate_google(db, payload.access_token)
     return token_response(tokens, response, False)
 
 

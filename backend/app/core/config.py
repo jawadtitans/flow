@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     celery_result_backend: str = "redis://localhost:6379/3"
     jwt_secret: str = "unsafe-development-secret"
     jwt_refresh_secret: str = "unsafe-development-refresh-secret"
+    supabase_url: str | None = None
+    supabase_publishable_key: SecretStr | None = None
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
     cors_origins: str = "http://localhost:5173,http://localhost:8080"
