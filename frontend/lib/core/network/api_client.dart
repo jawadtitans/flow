@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../storage/session_storage.dart';
@@ -227,4 +228,22 @@ class ApiClient {
   }
 
   void close() => dio.close(force: true);
+}
+
+/// Keep provider and backend details out of the Google sign-in UI.
+String googleAuthErrorMessage(Object error) {
+  if (error is AuthFailure) return error.message;
+  if (error is AuthException) {
+    if (error.code == 'access_denied' || error.code == 'user_cancelled') {
+      return 'Google sign-in was cancelled.';
+    }
+    return 'Unable to connect to Google. Please try again.';
+  }
+  if (error is DioException) {
+    if (error.response?.statusCode == 401) {
+      return 'This account is unavailable. Please contact Flow support.';
+    }
+    return 'We couldn’t complete your sign-in. Please try again.';
+  }
+  return 'We couldn’t complete your sign-in. Please try again.';
 }

@@ -79,6 +79,14 @@ class FakeAuthApi implements HttpClientAdapter {
           'refresh_token': 'refresh',
           'profile_completed': user['profile_completed'],
         });
+      case 'auth/google':
+        if (sendError != null) return reply({'detail': sendError}, 503);
+        user['social_auth'] = true;
+        return reply({
+          'access_token': 'google-flow-access',
+          'refresh_token': 'google-flow-refresh',
+          'token_type': 'bearer',
+        });
       case 'auth/refresh':
         return reply({
           'access_token': 'new-access',

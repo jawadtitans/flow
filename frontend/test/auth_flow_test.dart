@@ -139,6 +139,27 @@ void main() {
     },
   );
 
+  testWidgets('sign in screen renders the shared Google action', (
+    tester,
+  ) async {
+    await open(tester);
+    expect(
+      find.widgetWithText(OutlinedButton, 'Continue with Google'),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .getSemantics(
+            find.widgetWithText(OutlinedButton, 'Continue with Google'),
+          )
+          .getSemanticsData()
+          .flagsCollection
+          .isButton,
+      isTrue,
+    );
+    await close(tester);
+  });
+
   testWidgets('passwordless accounts only offer code sign-in', (tester) async {
     await open(tester, hasPassword: false);
     await tester.enterText(input('sign-in-identifier'), 'new@flow.example');

@@ -37,6 +37,7 @@ dependencies:
   passkeys: ^2.23.1
 
   intl: ^0.20.2
+  supabase_flutter: ^2.18.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -9,7 +9,25 @@
 		<string>Choose a profile photo for your Flow account.</string>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
-		<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>flow</string></array></dict></array>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.flow.app</string>
+				</array>
+			</dict>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>flow</string>
+				</array>
+			</dict>
+		</array>
         <key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../shared/widgets/flow_dialog.dart';
@@ -19,6 +20,7 @@ class SignInPage extends ConsumerStatefulWidget {
 
 class _SignInPageState extends ConsumerState<SignInPage> {
   late final TextEditingController _identifier;
+  bool _googleSignInPending = false;
 
   @override
   void initState() {
@@ -45,8 +47,31 @@ class _SignInPageState extends ConsumerState<SignInPage> {
     if (mounted && success) context.push('/auth/code');
   }
 
+  Future<void> _continueWithGoogle() async {
+    if (ref.read(authControllerProvider).busy) return;
+    setState(() => _googleSignInPending = true);
+    await ref.read(authControllerProvider.notifier).continueWithGoogle();
+    if (mounted && ref.read(authControllerProvider).user == null) {
+      setState(() => _googleSignInPending = false);
+    }
+  }
+
   @override
-  Widget build(BuildContext context) => AuthScaffold(
+  Widget build(BuildContext context) {
+    ref.listen(authControllerProvider, (previous, next) {
+      if (_googleSignInPending && previous?.user == null && next.user != null) {
+        _googleSignInPending = false;
+        context.go(
+          next.user!.nextRoute == '/today'
+              ? '/auth/getting-ready'
+              : next.user!.nextRoute,
+        );
+      }
+    });
+    return _buildPage(context);
+  }
+
+  Widget _buildPage(BuildContext context) => AuthScaffold(
     title: 'Welcome to Flow',
     showSettings: true,
     fallback: '/welcome',
@@ -119,6 +144,35 @@ class _SignInPageState extends ConsumerState<SignInPage> {
             isEmail(_identifier.text) && !ref.watch(authControllerProvider).busy
             ? _continue
             : null,
+      ),
+      const SizedBox(height: 8),
+      OutlinedButton.icon(
+        icon: ref.watch(authControllerProvider).googleBusy
+            ? const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : SvgPicture.asset(
+                'assets/social/google.svg',
+                width: 20,
+                height: 20,
+              ),
+        label: Text(
+          ref.watch(authControllerProvider).googleBusy
+              ? 'Connecting to Google...'
+              : 'Continue with Google',
+        ),
+        onPressed: ref.watch(authControllerProvider).busy
+            ? null
+            : _continueWithGoogle,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(48),
+          shape: const StadiumBorder(),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
       TextButton.icon(
         icon: const Icon(Icons.fingerprint),

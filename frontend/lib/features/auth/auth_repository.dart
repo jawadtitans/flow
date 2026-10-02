@@ -11,6 +11,7 @@ class FlowUser {
     this.phoneVerified = false,
     this.firstName = '',
     this.lastName = '',
+    this.socialAuth = false,
     this.birthDate,
     this.hasPassword = false,
     this.onboardingCompleted = false,
@@ -25,6 +26,7 @@ class FlowUser {
   final bool profileCompleted;
   final String firstName;
   final String lastName;
+  final bool socialAuth;
   final DateTime? birthDate;
   final bool hasPassword;
   final bool onboardingCompleted;
@@ -33,7 +35,9 @@ class FlowUser {
   final String? otherInterest;
   final String? profilePhoto;
   String get nextRoute {
-    if (!profileCompleted && !hasPassword) return '/auth/set-password';
+    if (!profileCompleted && !hasPassword && !socialAuth) {
+      return '/auth/set-password';
+    }
     if (!profileCompleted) return '/auth/profile';
     if (!onboardingCompleted) {
       return interests.isEmpty ? '/auth/onboarding' : '/auth/introduction';
@@ -56,6 +60,7 @@ class FlowUser {
     profilePhoto: data['profile_photo'] as String?,
     firstName: data['first_name'] as String? ?? '',
     lastName: data['last_name'] as String? ?? '',
+    socialAuth: data['social_auth'] as bool? ?? false,
     birthDate: data['birth_date'] == null
         ? null
         : DateTime.parse(data['birth_date'] as String),
@@ -103,6 +108,33 @@ class AuthRepository {
       _signIn('auth/verify-otp', {'email': email, 'code': code});
   Future<FlowUser> loginPassword(String email, String password) =>
       _signIn('auth/login-password', {'email': email, 'password': password});
+
+  Future<FlowUser> loginWithGoogle(String supabaseAccessToken) async {
+    final response = await client.dio.post<Map<String, dynamic>>(
+      'auth/google',
+      data: {'access_token': supabaseAccessToken},
+    );
+    final data = response.data;
+    if (data == null ||
+        data['access_token'] is! String ||
+        (data['access_token'] as String).isEmpty ||
+        data['refresh_token'] is! String ||
+        (data['refresh_token'] as String).isEmpty) {
+      throw const AuthFailure(
+        "We couldn't complete your sign-in. Please try again.",
+      );
+    }
+    // Resolve and validate the profile before changing the stored Flow session.
+    final profile = await client.dio.get<Map<String, dynamic>>(
+      'me',
+      options: Options(
+        headers: {'Authorization': 'Bearer ${data['access_token']}'},
+      ),
+    );
+    final user = FlowUser.fromJson(profile.data!);
+    await client.establish(data);
+    return user;
+  }
 
   Future<FlowUser> setPassword(String password) async {
     final response = await client.dio.post<Map<String, dynamic>>(

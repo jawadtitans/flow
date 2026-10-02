@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/api_client.dart';
 import 'auth_repository.dart';
 import '../settings/domain/passkey_service.dart';
+import 'social_auth_service.dart';
 
 class AuthState {
   const AuthState({
@@ -11,6 +12,7 @@ class AuthState {
     this.access,
     this.resetEmail = '',
     this.busy = false,
+    this.googleBusy = false,
     this.error,
     this.initialized = true,
   });
@@ -19,6 +21,7 @@ class AuthState {
   final AccessInfo? access;
   final String resetEmail;
   final bool busy;
+  final bool googleBusy;
   final String? error;
   final bool initialized;
   String get email => access?.email ?? user?.email ?? '';
@@ -30,6 +33,7 @@ class AuthState {
     AccessInfo? access,
     String? resetEmail,
     bool? busy,
+    bool? googleBusy,
     String? error,
   }) => AuthState(
     user: user ?? this.user,
@@ -37,12 +41,15 @@ class AuthState {
     access: access ?? this.access,
     resetEmail: resetEmail ?? this.resetEmail,
     busy: busy ?? this.busy,
+    googleBusy: googleBusy ?? this.googleBusy,
     error: error,
     initialized: initialized,
   );
 }
 
 class AuthController extends Notifier<AuthState> {
+  bool _disposed = false;
+
   @override
   AuthState build() {
     final client = ref.watch(apiClientProvider);
@@ -51,7 +58,10 @@ class AuthController extends Notifier<AuthState> {
         error: 'Your session has ended. Please sign in again.',
       );
     };
-    ref.onDispose(() => client.onSessionExpired = null);
+    ref.onDispose(() {
+      client.onSessionExpired = null;
+      _disposed = true;
+    });
     return const AuthState(initialized: false);
   }
 
@@ -107,6 +117,31 @@ class AuthController extends Notifier<AuthState> {
     state = AuthState(user: await _repository.me(), busy: true);
   });
 
+  Future<void> continueWithGoogle() async {
+    if (state.busy) return;
+    state = state.copyWith(busy: true, googleBusy: true);
+    try {
+      final token = await ref
+          .read(socialAuthServiceProvider)
+          .authenticateWithGoogle();
+      if (_disposed) return;
+      if (token == null) {
+        state = state.copyWith(busy: false, googleBusy: false);
+        return;
+      }
+      final user = await _repository.loginWithGoogle(token);
+      if (!_disposed) state = AuthState(user: user);
+    } catch (error) {
+      if (!_disposed) {
+        state = state.copyWith(
+          busy: false,
+          googleBusy: false,
+          error: googleAuthErrorMessage(error),
+        );
+      }
+    }
+  }
+
   Future<bool> forgotPassword(String email) => _run(() async {
     final normalized = email.trim().toLowerCase();
     await _repository.forgotPassword(normalized);
@@ -127,6 +162,12 @@ class AuthController extends Notifier<AuthState> {
 
   Future<bool> logout() => _run(() async {
     await _repository.logout();
+    try {
+      await ref.read(socialAuthServiceProvider).signOut();
+    } catch (_) {
+      // Flow logout has already cleared its own session. Supabase may not be
+      // initialized in previews or tests that do not enable social auth.
+    }
     state = const AuthState(busy: true);
   });
 
